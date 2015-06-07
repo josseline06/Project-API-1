@@ -36,6 +36,7 @@
         room = data.room;
         socket.emit('load', data.room);
         socket.emit('login',{user:users_chat[1],id:data.room});
+        cargarMensajes(data.room);
 
       })
       .fail(function(resp){
@@ -62,6 +63,7 @@
       socket.on('receive', function(data){
         console.log(data);
         $('#messages').append($('<li>').text(data.user + " : " + data.msg));
+        scrollToBottom();
       });
 
       function enviar(){
@@ -90,8 +92,34 @@
         $('#messages').append($('<li>').text(data.user + " : " + data.msg));
         socket.emit('msg', data);
         $('#msg').val('');
+        scrollToBottom();
         return false;
       };
+
+      function cargarMensajes(room){
+        $.ajax({ 
+          type:'GET',
+          url: "http://localhost:8080/api/chat/"+room+"/messages",
+          headers: {
+            "Authorization" : 'Bearer ' + sessionStorage.token
+          }
+        })
+        .done(function(data){
+          var i=data.length-1;
+          for(i; i>=0; --i){
+
+            $('#messages').append($('<li>').text(data[i].owner + " : " + data[i].content));
+          }
+          scrollToBottom();
+        })
+        .fail(function(resp){
+          console.log(resp);
+        });
+      }
+
+      function scrollToBottom(){
+        $("html, body").animate({ scrollTop: $(document).height()-$(window).height() },10);
+      }
 
     </script>
 
