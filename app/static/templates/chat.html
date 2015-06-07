@@ -18,19 +18,78 @@
     </style>
 
     <script>
-      var room = window.location.pathname.match(/\/chat\/([a-zA-Z0-9]+)$/)[1];
-      var socket = io.connect('localhost:8080');
-      console.log(room);
-      socket.emit('login', {user: 'ybra1993', id: room});
+      var chatform= $("#algo");
+      var users_chat = window.location.pathname.match(/\/chat\/(\w{3,})-(\w{3,})$/);
+      var socket = io.connect('http://localhost:8080');
 
-      function submision(){
-        /*socket.emit('chat message', $('#msg').val());
-        $('#msg').val('');*/
+      var resultado,room;
+      console.log(sessionStorage);
+      console.log("Buscando");
+      $.ajax({ 
+        type:'GET',
+        url: "http://localhost:8080/api/users/"+users_chat[1]+"/chat/"+users_chat[2],
+        headers: {
+          "Authorization" : 'Bearer ' + sessionStorage.token
+        }
+      })
+      .done(function(data){
+        room = data.room;
+        socket.emit('load', data.room);
+        socket.emit('login',{user:users_chat[1],id:data.room});
 
-        socket.on('msg', function(data){
-          $('#messages').append($('<li>').text(data.user + " : " + data.msg));
+      })
+      .fail(function(resp){
+        if(resp.status==404){
+          $.ajax({ 
+            type:'POST',
+            url: "http://localhost:8080/api/users/"+users_chat[1]+"/chat/"+users_chat[2],
+            headers: {
+              "Authorization" : 'Bearer ' + sessionStorage.token
+            }
+          })
+          .done(function(data){
+            room = data.room;
+            socket.emit('load', data.room);
+            socket.emit('login',{user:users_chat[1],id:data.room});
+          })
+          .fail(function(resp){
+            console.log(resp);
+          });
+        }
+
+      });
+
+      socket.on('receive', function(data){
+        console.log(data);
+        $('#messages').append($('<li>').text(data.user + " : " + data.msg));
+      });
+
+      function enviar(){
+        var data = {
+          user:users_chat[1],
+          msg:$('#msg').val()
+        }
+
+        $.ajax({ 
+          type:'POST',
+          url: "http://localhost:8080/api/chat/"+room+"/messages",
+          data : data,
+          dataType: 'jsonp',
+          headers: {
+            "Authorization" : 'Bearer ' + sessionStorage.token
+          }
+        })
+        .done(function(data){
+          console.log(data);
+
+        })
+        .fail(function(resp){
+          console.log(resp);
         });
 
+        $('#messages').append($('<li>').text(data.user + " : " + data.msg));
+        socket.emit('msg', data);
+        $('#msg').val('');
         return false;
       };
 
@@ -42,7 +101,7 @@
       <h3>Chat Prueba - Api - Duckface</h3>
 
       <ul id="messages"></ul>
-      <form id="algo" onsubmit="return submision()">
+      <form id="algo" onsubmit="return enviar()">
         <input id="msg" autocomplete="off" placeholder="Mensaje" required/><button type="submit">Enviar</button>
       </form>
     </div>

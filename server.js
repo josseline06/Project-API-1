@@ -23,7 +23,21 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // seting up app to have cors
-app.use(cors());
+app.options('*', cors());
+
+app.all('/*', function(req, res, next) {
+    // CORS headers
+    res.header("Access-Control-Allow-Origin", "*"); 
+    res.header('Access-Control-Allow-Methods',    'GET,PUT,POST,DELETE,OPTIONS');
+    res.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type");
+    if (req.method == 'OPTIONS') {
+        res.status(200);
+        res.write("Allow: GET,PUT,POST,DELETE,OPTIONS");
+        res.end();
+    } else {
+        next();
+    }
+});
 // use morgan to log requests to the console
 app.use(morgan('dev'));
 

@@ -7,6 +7,7 @@ var MessageSchema = new Schema({
 
 	content : String,
 
+	owner : String,
 
 	attachment : {
 		type_attachment : String,

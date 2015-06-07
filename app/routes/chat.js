@@ -1,7 +1,6 @@
 
 
 module.exports = function(app, chatRoutes,io){
-	crypto = require("crypto")
 	var User = require('../models/user.js');
 	var Chat = require('../models/chat.js');
 	var Message = require ('../models/message.js');
@@ -10,82 +9,124 @@ module.exports = function(app, chatRoutes,io){
 
         Chat.find({
 
-        	user1: req.params.username,
+			$or:[
+				{user1:req.params.username},
+				{user2:req.params.username}
+			],
         	isActive : true
 
         },
         function(err, chat) {
             console.log(chat);
-            if (err)
+            if (err){
                 res.send(err);
-            res.json(chat);
+            }else if(chat.length==0){
+
+            	res.status(404).json({chat:"you don't have chats active"});
+            }else{
+
+            }
         });
 
 	});
 
-	chatRoutes.post('/users/:username1/chat',function(req,res){
+	chatRoutes.route('/users/:username1/chat/:username2')
+
+	.get(function(req,res){
 		Chat.find({
 			$or:[
-				{user1:req.params.username1, user2:req.body.username2},
-				{user1:req.body.username2, user2:req.params.username1}
+				{user1:req.params.username1, user2:req.params.username2},
+				{user1:req.params.username2, user2:req.params.username1}
 			]
 		},
-		'room',
-		function(err,room_id){
+		'_id',
+		function(err,room){
 			if (err) throw err;
 			
-			if (room_id.length == 0){
-
-				console.log("creando el chat");
-				chat = new Chat();
-				chat.user1 = req.params.username1;
-				chat.user2 = req.body.username2;
-				chat.isActive = true;
-
-		        var concat = 'chat' + chat.user1 + chat.user2;
-		        console.log(concat);
-		    	var hash = crypto.createHash('md5').update(concat).digest('hex');
-		    	console.log(hash);
-		    	chat.room = hash;
-
-		        chat.save(function(err) {
-		            if (err){
-		            	console.log("no se pudo crear el chat");
-		            	console.log(err);
-		                res.send(err);
-		            }else{
-
-		            }
-		        });
+			if (room.length == 0){
+				res.status(404).json({room : "Not found chat room"});
+			}else{
+				console.log(room[0]._id);
+				res.status(200).json({room : room[0]._id});
 			}
-			res.json({room : chat.room});
 
 		});
+	})
+	.post(function(req,res){
+		console.log("creando el chat");
+		chat = new Chat();
+		chat.user1 = req.params.username1;
+		chat.user2 = req.params.username2;
+		chat.isActive = true;
+        chat.save(function(err) {
+            if (err){
+            	console.log("no se pudo crear el chat");
+            	console.log(err);
+                res.send(err);
+            }else{
+
+            }
+        });
+		res.status(201).json({room : chat._id});
 	});
 
 	chatRoutes.route('/chat/:room/messages')
 
 		.get(function(req, res){
 
-			/*
-	        Message.find({
+			Message
+			.find({ chat: req.params.room })
+			.limit(10)
+			.sort({'date':'desc'})
+			.exec(function (err, mesages) {
 
-	        	user1: req.params.username,
-	        	isActive : true
+			if (err) 
+				res.send(err);
+			else
+				res.json(mesages);
 
-	        },
-	        function(err, messages) {
-	            console.log(messages);
-	            if (err)
-	                res.send(err);
-	            res.json(messages);
-	        });*/
+			});
 
 		})
 		.post(function(req, res){
+
+	        Chat.find({
+	        	_id: req.params.room
+	        },
+	        function(err, chat){
+	            console.log(chat);
+	            if (err)
+	                res.send(err);
+	        });
+
+
 			var message = new Message();
-			res.json({ok:'todo fino'});
-	});
+			message.chat = req.params.room;
+			message.date = Date.now();
+			message.content = req.body.msg;
+			message.owner = req.body.user;
+			
+
+	        message.save(function(err) {
+	            if (err){
+	                res.send(err);
+	            }else{
+
+	            }
+	        });
+
+			Chat.findByIdAndUpdate(
+		        req.params.room,
+		        {$push: {"messages": message._id}},
+		        {safe: true, upsert: true, new : true},
+		        function(err, model) {
+		        	if(err)
+		            	res.send(err);
+		        }
+		    );
+
+			res.status(201).json({message:'the message was created correctly'});
+		});
 
 	var chat = io.on('connection', function (socket) {
 
@@ -94,9 +135,7 @@ module.exports = function(app, chatRoutes,io){
 
 		socket.on('load',function(data){
 
-			console.log("EPALEEEEEEEEEEE");
-
-			var room = findClientsSocket(io,data.id);
+			var room = findClientsSocket(io,data);
 			if(room.length === 0 ) {
 
 				socket.emit('peopleinchat', {number: 0});
@@ -140,18 +179,11 @@ module.exports = function(app, chatRoutes,io){
 
 				// Send the startChat event to all the people in the
 				// room, along with a list of people that are in it.
-
-				chat.in(data.id).emit('startChat', {
-					boolean: true,
-					id: data.id,
-					users: usernames
-				});
 			}
-			console.log(socket);
 		});
 
 		// Somebody left the chat
-		socket.on('disconnect', function() {
+		socket.on('end', function() {
 
 			// Notify the other person in the chat room
 			// that his partner has left
@@ -169,8 +201,6 @@ module.exports = function(app, chatRoutes,io){
 
 		// Handle the sending of messages
 		socket.on('msg', function(data){
-			console.log("llego");
-			console.log(data);
 			// When the server receives a message, it sends it to the other person in the room.
 			socket.broadcast.to(socket.room).emit('receive', {msg: data.msg, user: data.user});
 		});

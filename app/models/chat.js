@@ -3,11 +3,6 @@ var mongoose = require('mongoose'),
 
 var ChatSchema = new Schema({
 
-	room : {
-		type: String,
-		unique: true
-	},
-
 	user1: {
 		type: String,
 		unique: true,

@@ -22,3 +22,5 @@ node server.js
 E ir a [localhost:8080/api](http://localhost:8080/api).
  
 La documentación puede ser encontrada en [localhost:8080/api/docs](http://localhost:8080/api/docs).
+
+![DuckFace](./app/static/img/DuckFace-Diagrama de Clases.png "Diagrama de Clases")
