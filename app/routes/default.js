@@ -110,7 +110,7 @@ module.exports = function(app,apiRoutes) {
                     if (err)
                         res.send(err);
 
-                    res.json({ message: 'User created!' });
+                    res.json({ message: 'User updated!' });
                 });
 
             });
