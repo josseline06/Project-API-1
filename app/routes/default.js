@@ -76,18 +76,46 @@ module.exports = function(app,apiRoutes) {
         });
 
     // return information about that user
-    apiRoutes.get('/users/:username', function(req, res) {
-        if (req.params.username != req.user.username){
-            res.status(401).send('Wrong user');
-        }else{
+    apiRoutes.route('/users/:username')
+
+        .get(function(req, res) {
+            if (req.params.username != req.user.username){
+                res.status(401).send('Wrong user');
+            }else{
+                User.findOne({username: req.params.username}, function(err, user) {
+                    console.log(user);
+                    if (err)
+                        res.send(err);
+                    res.json(user);
+                });
+            }
+        })
+
+        .put(function(req, res) {
+
+            // use our word model to find the word we want
             User.findOne({username: req.params.username}, function(err, user) {
-                console.log(user);
+
                 if (err)
                     res.send(err);
-                res.json(user);
+
+                user.username = req.body.username;  // set the user username (comes from the request)
+                user.password = req.body.password;
+                user.name = req.body.name;
+                user.lastname = req.body.lastname;
+                console.log(user.username,user.password,user.name,user.lastname);
+
+                // save the user and check for errors
+                user.save(function(err) {
+                    if (err)
+                        res.send(err);
+
+                    res.json({ message: 'User created!' });
+                });
+
             });
-        }
-    });
+        });
+
     
 
     // We are going to protect /api routes with JWT
