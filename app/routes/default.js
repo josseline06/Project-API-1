@@ -44,7 +44,7 @@ module.exports = function(app,apiRoutes) {
                             token: token
                         });
                     } else {
-                        res.json({ success: false, message: 'Authentication failed. Wrong password.' });
+                        res.status(401).json({ success: false, message: 'Authentication failed. Wrong password.' });
                     }
                 });
             }
