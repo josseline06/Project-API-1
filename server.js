@@ -64,6 +64,10 @@ app.get('/api/docs',function(req,res){
 
 });
 
+app.get('/api/sounds/:sound', function(req, res) {
+    res.download(__dirname+'/app/static/sounds/'+req.params.sound);
+});
+
 app.get('/api/test/chat/:room',function(req,res){
     
     //console.log(__dirname);   
